@@ -1,47 +1,65 @@
-import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.common.collect.Lists;
 
 import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 public class FirebaseWithJavaApp {
 
     public static void main(String[] args) throws Exception {
         String projectId = "java-poc-99510";
-        String collection = "Cities";
-        String document = "AV";
+        String collection1 = "Cities";
+        String collection2 = "Regions";
+        String collection3 = "States";
+        String document1 = "AV";
         String document2 = "NA";
+        String document3 = "CAM";
+        String document4 = "IT";
 
-        System.out.println("####### INIT FIRESTORE #######");
-        MyFirestore myFS = new MyFirestore(projectId);
+        System.out.println("######### INIT #########");
+        MyFirestore myFs = MyFirestore.getInstance(projectId);
+        MyFirestoreCollection<City> myFsCollCities = new MyFirestoreCollection<>(myFs, collection1);
+        MyFirestoreCollection<Region> myFsCollRegions = new MyFirestoreCollection<>(myFs, collection2);
+        MyFirestoreCollection<State> myFsCollStates = new MyFirestoreCollection<>(myFs, collection3);
+        MyFirestoreDocument<City> myFsDocAv = new MyFirestoreDocument<>(myFsCollCities, document1);
+        MyFirestoreDocument<City> myFsDocNa = new MyFirestoreDocument<>(myFsCollCities, document2);
+        MyFirestoreDocument<Region> myFsDocCam = new MyFirestoreDocument<>(myFsCollRegions, document3);
+        MyFirestoreDocument<State> myFsDocIt = new MyFirestoreDocument<>(myFsCollStates, document4);
 
         System.out.println("\n########## ADD ##########");
         System.out.println("Set document1.");
-        myFS.setData(collection, document, new City("Avellino ", "Campania", 530, Lists.newArrayList("Atripalda", "Mercogliano", "Monteforte")), false);
+        myFsDocAv.setData(new City("Avellino ", "Campania", 530, 0, Lists.newArrayList("Atripalda", "Mercogliano", "Monteforte")), false);
         System.out.println("Set document2.");
-        myFS.setData(collection, document2, new City("Napoli", "Campania", 940400, Lists.newArrayList("Pozzuoli", "Nola", "Pompei", "Sorrento")), false);
-        System.out.println("Set document1 (merge case).");
-        myFS.setData(collection, document, Collections.singletonMap("altitude", 348), true);
+        myFsDocNa.setData(new City("Napoli", "Campania", 940400, 0, Lists.newArrayList("Pozzuoli", "Nola", "Pompei", "Sorrento")), false);
+        System.out.println("Set document3.");
+        myFsDocCam.setData(new Region("Campania", "Italia", 5800000), false);
+        System.out.println("Set document4.");
+        myFsDocIt.setData(new State("Italia", "Roma", 60000000), false);
+
+        System.out.println("\n########## MERGE ##########");
+        System.out.println("Add 'altitude' value to document1.");
+        myFsDocAv.setData(Collections.singletonMap("altitude", 348), true);
 
         System.out.println("\n########## UPDATE ##########");
-        System.out.println("Update document1 (field 'people', new value 53000).");
-        myFS.updateData(collection, document, Collections.singletonMap("people", 53000));
+        System.out.println("Update 'people' value of document1.");
+        myFsDocAv.updateData(Collections.singletonMap("people", 53000));
 
         System.out.println("\n########## READ ##########");
-        System.out.println("Read and print all data:");
-        List<QueryDocumentSnapshot> allData = myFS.readAllData(collection);
-        myFS.printData(allData);
+        System.out.println("Read and print all 'States' data:");
+        myFsCollStates.readAllData(State.class).forEach(System.out::println);
+        System.out.println("\nRead and print all 'Region' data:");
+        myFsCollRegions.readAllData(Region.class).forEach(System.out::println);
+        System.out.println("\nRead and print all 'Cities' data:");
+        myFsCollCities.readAllData(City.class).forEach(System.out::println);
 
-        System.out.println("\nRead and print only document2 ('NA') data:");
-        Optional<QueryDocumentSnapshot> filteredDataOpt = myFS.readDataFromDocument(collection, document2);
-        if (filteredDataOpt.isPresent()) {
-            myFS.printData(Collections.singletonList(filteredDataOpt.get()));
+        System.out.println("\nRead and print only document2:");
+        City city = myFsDocNa.readData(City.class);
+        if (Objects.isNull(city)) {
+            System.out.println("ERROR: No such document!");
         } else {
-            System.out.println("No data.");
+            System.out.println(city);
         }
 
-        System.out.println("\n##### CLOSE FIRESTORE #####");
-        myFS.close();
+        System.out.println("\n######### CLOSE #########");
+        myFs.close();
     }
 }

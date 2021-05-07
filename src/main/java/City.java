@@ -1,28 +1,20 @@
 import java.util.List;
 
-public class City {
+public class City extends Entity {
 
-    private String name;
     private String region;
-    private int people;
+    private int altitude;
     private List<String> municipalities;
 
     public City() {
     }
 
-    public City(String name, String region, int people, List<String> municipalities) {
-        this.name = name;
+    public City(String name, String region, int people, int altitude, List<String> municipalities) {
+        setName(name);
         this.region = region;
-        this.people = people;
+        setPeople(people);
+        this.altitude = altitude;
         this.municipalities = municipalities;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getRegion() {
@@ -33,12 +25,12 @@ public class City {
         this.region = region;
     }
 
-    public int getPeople() {
-        return people;
+    public int getAltitude() {
+        return altitude;
     }
 
-    public void setPeople(int people) {
-        this.people = people;
+    public void setAltitude(int altitude) {
+        this.altitude = altitude;
     }
 
     public List<String> getMunicipalities() {
@@ -47,5 +39,11 @@ public class City {
 
     public void setMunicipalities(List<String> municipalities) {
         this.municipalities = municipalities;
+    }
+
+    @Override
+    public String toString() {
+        return "CITY: { name = " + getName() + ", region = " + region + ", altitude = " + altitude +
+                ", municipalities = " + municipalities.toString() + ", people: " + getPeople() + "}";
     }
 }

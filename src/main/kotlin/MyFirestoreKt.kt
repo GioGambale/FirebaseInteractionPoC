@@ -1,26 +1,28 @@
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.firestore.CollectionReference
+import com.google.cloud.firestore.DocumentReference
 import com.google.cloud.firestore.Firestore
-import com.google.cloud.firestore.QueryDocumentSnapshot
 import com.google.cloud.firestore.SetOptions
-import com.google.cloud.firestore.WriteResult
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.FirestoreClient
 import java.io.FileInputStream
 import java.io.InputStream
 
-data class CityKt(val name: String, val region: String, val people: Int, val municipalities: List<String>)
+class MyFirestoreKt private constructor(projectId: String) {
+    internal val firestoreDb: Firestore = init(projectId)
 
-class MyFirestoreKt(projectId: String) {
-    private val fs: Firestore
+    companion object {
+        @Volatile
+        private var myFirestoreInstance: MyFirestoreKt? = null
 
-    init {
-        this.fs = init(projectId)
+        @Synchronized
+        fun getInstance(projectId: String): MyFirestoreKt =
+            myFirestoreInstance ?: MyFirestoreKt(projectId).also { myFirestoreInstance = it }
     }
 
     private fun init(projectId: String): Firestore {
-        val serviceAccount: InputStream =
-            FileInputStream("src/main/resources/serviceAccountKey.json")
+        val serviceAccount: InputStream = FileInputStream("src/main/resources/serviceAccountKey.json")
         val options = FirebaseOptions.builder()
             .setCredentials(GoogleCredentials.fromStream(serviceAccount))
             .setProjectId(projectId)
@@ -29,31 +31,53 @@ class MyFirestoreKt(projectId: String) {
         return FirestoreClient.getFirestore()
     }
 
-    fun setData(collection: String, document: String, city: CityKt, merge: Boolean): WriteResult =
-        if (merge) {
-            fs.collection(collection).document(document).set(city, SetOptions.merge()).get()
-        } else {
-            fs.collection(collection).document(document).set(city).get()
-        }
-
-    fun setData(collection: String, document: String, values: Map<String, Any>, merge: Boolean): WriteResult =
-        if (merge) {
-            fs.collection(collection).document(document).set(values, SetOptions.merge()).get()
-        } else {
-            fs.collection(collection).document(document).set(values).get()
-        }
-
-    fun updateData(collection: String, document: String, updateValues: Map<String, Any>): WriteResult =
-        fs.collection(collection).document(document).update(updateValues).get()
-
-    fun close() = fs.close()
-
-    fun readAllData(collection: String): List<QueryDocumentSnapshot> =
-        fs.collection(collection).get().get().documents
-
-    fun readDataFromDocument(collection: String, document: String): QueryDocumentSnapshot? =
-        readAllData(collection).findLast { doc: QueryDocumentSnapshot -> doc.id == document }
+    fun close() {
+        firestoreDb.close()
+    }
 }
 
-fun printData(documents: List<QueryDocumentSnapshot>) =
-    documents.forEach { it.data.forEach { (k, v) -> println("$k: $v") } }
+class MyFirestoreCollectionKt<T : EntityKt>(myFirestore: MyFirestoreKt, collectionName: String) {
+    internal val collection: CollectionReference = myFirestore.firestoreDb.collection(collectionName)
+
+    fun readAllData(clazz: Class<T>): List<T> {
+        val objs = mutableListOf<T>()
+        val documentList = collection.get().get().documents
+        for (document in documentList) {
+            objs.add(document.toObject(clazz))
+        }
+        return objs
+    }
+}
+
+class MyFirestoreDocumentKt<T : EntityKt>(collection: MyFirestoreCollectionKt<T>, documentName: String) {
+    private val document: DocumentReference = collection.collection.document(documentName)
+
+    fun setData(obj: T, merge: Boolean) {
+        if (merge) {
+            document.set(obj, SetOptions.merge()).get()
+        } else {
+            document.set(obj).get()
+        }
+    }
+
+    fun setData(values: Map<String, Any>, merge: Boolean) {
+        if (merge) {
+            document.set(values, SetOptions.merge()).get()
+        } else {
+            document.set(values).get()
+        }
+    }
+
+    fun updateData(updateValues: Map<String, Any>) {
+        document.update(updateValues).get()
+    }
+
+    fun readData(clazz: Class<T>): T? {
+        val documentSnapshot = document.get().get()
+        return if (documentSnapshot.exists()) {
+            documentSnapshot.toObject(clazz)
+        } else {
+            null
+        }
+    }
+}
