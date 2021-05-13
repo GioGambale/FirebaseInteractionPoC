@@ -1,3 +1,6 @@
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.ListenerRegistration;
 import com.google.common.collect.Lists;
 
 import java.util.Collections;
@@ -59,7 +62,31 @@ public class FirebaseWithJavaApp {
             System.out.println(city);
         }
 
+        System.out.println("\n### WAITING FOR CHANGES (on doc1) FOR 30 SECONDS  ###");
+        ListenerRegistration listener = listenData(myFs.getFirestoreDb(), collection1, document1);
+        long startTime = System.currentTimeMillis();
+        while ((System.currentTimeMillis() - startTime) < 30000) {
+            // nop
+        }
+
         System.out.println("\n######### CLOSE #########");
+        listener.remove();
         myFs.close();
+    }
+
+    private static ListenerRegistration listenData(Firestore db, String collection, String document) {
+        DocumentReference docRef = db.collection(collection).document(document);
+        return docRef.addSnapshotListener((snapshot, e) -> {
+            if (e != null) {
+                System.err.println("Listen failed: " + e);
+                return;
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                System.out.println("Current data: " + snapshot.toObject(City.class));
+            } else {
+                System.out.print("Current data: null");
+            }
+        });
     }
 }

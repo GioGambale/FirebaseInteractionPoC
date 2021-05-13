@@ -1,4 +1,22 @@
+import com.google.cloud.firestore.Firestore
+import com.google.cloud.firestore.ListenerRegistration
 import java.util.*
+
+private fun listenData(db: Firestore, collection: String, document: String): ListenerRegistration {
+    val docRef = db.collection(collection).document(document)
+    return docRef.addSnapshotListener { snapshot, e ->
+        if (e != null) {
+            System.err.println("Listen failed: $e")
+            return@addSnapshotListener
+        }
+
+        if (snapshot != null && snapshot.exists()) {
+            println("Current data: " + snapshot.toObject(CityKt::class.java))
+        } else {
+            print("Current data: null")
+        }
+    }
+}
 
 fun main() {
     val projectId = "java-poc-99510"
@@ -56,6 +74,14 @@ fun main() {
     val city: CityKt? = myFsDocMad.readData(CityKt::class.java)
     city?.let { println((it)) }
 
+    println("\n### WAITING FOR CHANGES (on doc1) FOR 30 SECONDS  ###")
+    val listener = listenData(myFs.firestoreDb, collection1, document1)
+    val startTime = System.currentTimeMillis()
+    while (System.currentTimeMillis() - startTime < 30000) {
+        // nop
+    }
+
     println("\n######## CLOSE ########")
+    listener.remove()
     myFs.close()
 }
