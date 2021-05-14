@@ -2,7 +2,8 @@ import com.google.cloud.firestore.Firestore
 import com.google.cloud.firestore.ListenerRegistration
 import java.util.*
 
-private fun listenData(db: Firestore, collection: String, document: String): ListenerRegistration {
+private fun listenDataKt(db: Firestore, collection: String, document: String): ListenerRegistration {
+    db.collection(collection).listDocuments()
     val docRef = db.collection(collection).document(document)
     return docRef.addSnapshotListener { snapshot, e ->
         if (e != null) {
@@ -75,7 +76,7 @@ fun main() {
     city?.let { println((it)) }
 
     println("\n### WAITING FOR CHANGES (on doc1) FOR 30 SECONDS  ###")
-    val listener = listenData(myFs.firestoreDb, collection1, document1)
+    val listener = listenDataKt(myFs.firestoreDb, collection1, document1)
     val startTime = System.currentTimeMillis()
     while (System.currentTimeMillis() - startTime < 30000) {
         // nop
